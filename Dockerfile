@@ -5,4 +5,4 @@ RUN apt-get update && apt-get install -y git
 RUN npm install --legacy-peer-deps
 COPY . .
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "pair.js"] 
