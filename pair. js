@@ -1,0 +1,39 @@
+const express = require('express');
+const { default: makeWASocket, useMultiFileAuthState, delay } = require('@whiskeysockets/baileys');
+const pino = require('pino');
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/', (req, res) => {
+  res.send(`
+  <html><head><title>MITHU PAIR SITE</title>
+  <style>body{background:#111;color:#fff;font-family:sans-serif;text-align:center;padding-top:50px}input{padding:12px;width:250px;border-radius:8px;border:none}button{padding:12px 20px;background:#25D366;color:#fff;border:none;border-radius:8px;margin-left:10px;font-weight:bold}</style>
+  </head><body>
+  <h1>🤖 MITHU MUSIC BOT</h1>
+  <h3>Public Pair Code Generator</h3>
+  <p>Number eka danna (ex: 9477xxxxxxx)</p>
+  <form action="/pair" method="GET">
+  <input name="number" placeholder="9477xxxxxxx" required>
+  <button type="submit">Get Pair Code</button>
+  </form>
+  <p style="margin-top:30px;color:#aaa">Bot by MITHU</p>
+  </body></html>`);
+});
+
+app.get('/pair', async (req, res) => {
+  let num = req.query.number.replace(/[^0-9]/g,'');
+  if(!num) return res.send('Number eka hari na!');
+  const { state } = await useMultiFileAuthState('./pair_'+num);
+  const sock = makeWASocket({ auth: state, logger: pino({level:'silent'}), printQRInTerminal:false, browser:['MITHU','Chrome','1.0'] });
+  if(!sock.authState.creds.registered){
+    await delay(1500);
+    try{
+      let code = await sock.requestPairingCode(num);
+      code = code?.match(/.{1,4}/g)?.join('-') || code;
+      return res.send(`<html><body style="background:#111;color:#fff;text-align:center;padding-top:50px;font-family:sans-serif"><h1>Pair Code: <b style="color:#25D366;font-size:40px">${code}</b></h1><p>WhatsApp > Linked Devices > Link a Device > Link with phone number > Type this code</p><p>Code eka 30s walin expire wenawa, refresh karala aluth ekak ganna</p></body></html>`);
+    }catch(e){ return res.send('Error: '+e.message); }
+  }
+});
+
+app.listen(3000, ()=> console.log('Pair Server on 3000'));
