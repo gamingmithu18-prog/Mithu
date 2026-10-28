@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mithu Song Bot Panel</title>
+<style>
+body{font-family:Arial;background:#111;color:#fff;padding:20px}
+.box{background:#222;padding:20px;border-radius:12px;max-width:400px;margin:auto}
+input{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:none}
+button{width:100%;padding:12px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:bold}
+a{color:#25D366}
+</style>
+</head>
+<body>
+<div class="box">
+<h2>🎵 Mithu Music Admin</h2>
+<p><a href="/qr" target="_blank">👉 Click to Get QR / Connect Bot</a></p>
+<input id="channel" placeholder="Channel JID (1203xxx@newsletter)">
+<input id="title" placeholder="Song Title - Eg: Hanthanata">
+<input id="image" placeholder="Cover Image URL (https://...)">
+<input id="mp3" placeholder="MP3 URL (https://...)">
+<button onclick="send()">SEND TO CHANNEL</button>
+<p id="msg"></p>
+</div>
+<script>
+async function send(){
+ const data = {
+  channelId: document.getElementById('channel').value,
+  title: document.getElementById('title').value,
+  image: document.getElementById('image').value,
+  mp3: document.getElementById('mp3').value
+ };
+ document.getElementById('msg').innerText = "Sending...";
+ const res = await fetch('/send-song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+ const j = await res.json();
+ document.getElementById('msg').innerText = j.success ? "✅ Sent!" : "❌ Error: "+j.error;
+}
+</script>
+</body>
+</html>
