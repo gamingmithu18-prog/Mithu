@@ -1,74 +1,51 @@
 const express = require('express');
-const { default: makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, delay } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const fs = require('fs');
 
 const app = express();
 app.use(express.json());
-app.use(express.static('public'));
 
-let sock;
-
-// Pair Code ganna API eka
-app.get('/code', async (req, res) => {
-    let number = req.query.number;
-    if (!number) return res.json({ error: "Number eka nane" });
-    number = number.replace(/[^0-9]/g, '');
-
-    try {
-        const { state, saveCreds } = await useMultiFileAuthState('./auth/' + number);
-        
-        sock = makeWASocket({
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino().child({ level: "fatal" }))
-            },
-            printQRInTerminal: false,
-            logger: pino({ level: "silent" }),
-            browser: ["MITHU-BOT", "Chrome", "1.0.0"]
-        });
-
-        sock.ev.on('creds.update', saveCreds);
-
-        if (!sock.authState.creds.registered) {
-            let code = await sock.requestPairingCode(number);
-            code = code?.match(/.{1,4}/g)?.join("-") || code;
-            res.json({ code: code });
-        } else {
-            res.json({ error: "Already paired" });
-        }
-
-    } catch (e) {
-        res.json({ error: e.message });
-    }
-});
-
-// Site eka pennana eka
 app.get('/', (req, res) => {
-    res.send(`
-    <html>
-    <head><title>MITHU PAIR</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>body{background:#111;color:#fff;text-align:center;font-family:sans-serif;padding-top:50px}input{padding:12px;width:250px;border-radius:8px;border:none}button{padding:12px 20px;background:#25D366;border:none;border-radius:8px;margin-top:10px;font-weight:bold}</style>
-    </head>
-    <body>
-    <h2>MITHU-MD PAIR SITE</h2>
-    <p>Number eka danna (9476...)</p>
-    <input id="num" placeholder="9476xxxxxxx"><br>
-    <button onclick="getCode()">GET CODE</button>
-    <h1 id="code"></h1>
-    <script>
-    async function getCode(){
-        let n=document.getElementById('num').value;
-        document.getElementById('code').innerText='Wait...';
-        let res=await fetch('/code?number='+n);
-        let data=await res.json();
-        document.getElementById('code').innerText=data.code || data.error;
-    }
-    </script>
-    </body>
-    </html>
-    `);
+  res.send(`
+  <h2>LAKSHAN-MD PAIR SITE</h2>
+  <input id="num" placeholder="947xxxxxxxx" style="padding:10px;width:200px">
+  <button onclick="getCode()" style="padding:10px">GET CODE</button>
+  <p id="out"></p>
+  <script>
+  async function getCode(){
+    const number = document.getElementById('num').value;
+    document.getElementById('out').innerText = 'Generating...';
+    const r = await fetch('/code?number='+number);
+    const d = await r.json();
+    document.getElementById('out').innerText = d.code || d.error;
+  }
+  </script>
+  `);
 });
 
-app.listen(3000, () => console.log('Pair server running on 3000'));
+app.get('/code', async (req, res) => {
+  let num = req.query.number?.replace(/[^0-9]/g,'');
+  if(!num) return res.json({error:'Enter number'});
+  
+  async function startPair() {
+    const { state, saveCreds } = await useMultiFileAuthState('./tmp_'+Date.now());
+    const sock = makeWASocket({
+      logger: pino({ level: 'silent' }),
+      printQRInTerminal: false,
+      auth: state,
+      browser: ['Ubuntu','Chrome','20.0']
+    });
+
+    if(!sock.authState.creds.registered) {
+      await delay(1500);
+      let code = await sock.requestPairingCode(num);
+      res.json({code: code});
+    }
+    sock.ev.on('creds.update', saveCreds);
+  }
+  startPair();
+});
+
+// ---- MEKA THAMAI FIX EKA ----
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => console.log('Pair server running on ' + PORT));
